@@ -1,8 +1,8 @@
-# 📝 Dynamic To-Do App
+#  Dynamic To-Do App
 
 A simple, responsive to-do list web application built with HTML, CSS, and JavaScript. Manage your daily tasks with add, edit, delete, and filter functionalities, all backed by localStorage.
 
-## 🚀 Features
+##  Features
 
 - Add, edit, and delete tasks
 - Mark tasks as completed or active
@@ -10,16 +10,13 @@ A simple, responsive to-do list web application built with HTML, CSS, and JavaSc
 - Data persistence using localStorage
 - Responsive and mobile-friendly UI
 
-## 📸 Screenshots
+##  Screenshots
 
 ![Todo App Screenshot](assets/screenshot.png)
 
-## 🛠️ Technologies Used
+##  Technologies Used
 
 - HTML5
 - CSS3
 - JavaScript (Vanilla)
 - localStorage
-
-## 📂 Project Structure
-
