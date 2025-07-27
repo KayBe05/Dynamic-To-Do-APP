@@ -1,16 +1,108 @@
 class TodoApp {
     constructor() {
-        this.tasks = this.loadTasks();
-        this.currentFilter = 'all';
-        this.currentSort = 'date-added';
-        this.searchQuery = '';
-        this.editingTaskId = null;
-        this.draggedTaskId = null;
+        // Configuration for better maintainability
+        this.config = {
+            maxTaskLength: 200,
+            maxDescriptionLength: 500,
+            autoSaveDelay: 300,
+            notificationDuration: 3000,
+            animationDuration: 300
+        };
 
-        this.initializeElements();
-        this.attachEventListeners();
-        this.initializeTheme();
-        this.render();
+        // Enhanced state management
+        this.state = {
+            tasks: this.loadTasks(),
+            currentFilter: 'all',
+            currentSort: 'date-added',
+            searchQuery: '',
+            editingTaskId: null,
+            draggedTaskId: null,
+            isLoading: false,
+            hasUnsavedChanges: false
+        };
+
+        // Bound handlers for better performance
+        this.boundHandlers = {
+            search: this.debounce(this.handleSearch.bind(this), 300),
+            autoSave: this.debounce(this.autoSave.bind(this), this.config.autoSaveDelay)
+        };
+
+        this.initialize();
+    }
+
+    async initialize() {
+        try {
+            this.initializeElements();
+            this.attachEventListeners();
+            this.initializeTheme();
+            this.setupAutoSave();
+            this.setupKeyboardShortcuts();
+            this.render();
+        } catch (error) {
+            this.handleError(error, 'INITIALIZATION');
+        }
+    }
+
+    // Enhanced error handling
+    handleError(error, context = 'GENERAL') {
+        console.error(`[TodoApp - ${context}]:`, error);
+
+        const errorMessages = {
+            'STORAGE': 'Failed to save data. Please check your browser settings.',
+            'VALIDATION': 'Invalid input. Please check your entries.',
+            'INITIALIZATION': 'App failed to load. Please refresh the page.',
+            'TASK_OPERATION': 'Task operation failed. Please try again.'
+        };
+
+        const userMessage = errorMessages[context] || 'An unexpected error occurred.';
+        this.showNotification(userMessage, 'error');
+    }
+
+    // Input validation with detailed feedback
+    validateTaskInput(input) {
+        const errors = [];
+
+        if (!input || !input.trim()) {
+            errors.push('Task title is required');
+        }
+
+        if (input && input.length > this.config.maxTaskLength) {
+            errors.push(`Task title too long (max ${this.config.maxTaskLength} characters)`);
+        }
+
+        // Check for potentially harmful content
+        const harmfulPatterns = [/<script/i, /javascript:/i, /onclick/i];
+        if (harmfulPatterns.some(pattern => pattern.test(input))) {
+            errors.push('Invalid characters detected');
+        }
+
+        return { errors, isValid: errors.length === 0 };
+    }
+
+    // Performance utilities
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    throttle(func, limit) {
+        let inThrottle;
+        return function () {
+            const args = arguments;
+            const context = this;
+            if (!inThrottle) {
+                func.apply(context, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        };
     }
 
     initializeElements() {
@@ -55,11 +147,12 @@ class TodoApp {
     }
 
     attachEventListeners() {
-        // Add task form
+        // Add task form with validation
         this.addTaskForm?.addEventListener('submit', (e) => this.handleAddTask(e));
 
-        // Search and filter
-        this.searchInput?.addEventListener('input', (e) => this.handleSearch(e));
+        // Enhanced search with debouncing
+        this.searchInput?.addEventListener('input', this.boundHandlers.search);
+
         this.filterButtons?.forEach(btn => {
             btn.addEventListener('click', (e) => this.handleFilter(e));
         });
@@ -89,12 +182,11 @@ class TodoApp {
         this.importBtn?.addEventListener('click', () => this.handleImportClick());
         this.importInput?.addEventListener('change', (e) => this.importTasks(e));
 
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
+        // Enhanced drag and drop
+        this.initializeDragAndDrop();
     }
 
     initializeTheme() {
-        // Load saved theme preference
         const savedTheme = localStorage.getItem('todoAppTheme');
         if (savedTheme === 'dark') {
             document.body.classList.add('theme-dark');
@@ -106,13 +198,9 @@ class TodoApp {
         const body = document.body;
         const isDark = body.classList.toggle('theme-dark');
 
-        // Save theme preference
         localStorage.setItem('todoAppTheme', isDark ? 'dark' : 'light');
-
-        // Update icon
         this.updateThemeIcon(isDark);
 
-        // Add rotation animation
         if (this.themeToggle) {
             this.themeToggle.classList.add('theme-toggle-animation');
             setTimeout(() => {
@@ -130,24 +218,33 @@ class TodoApp {
         }
     }
 
-    handleExportClick() {
-        if (this.exportBtn) {
-            this.exportBtn.classList.add('pulse');
-            setTimeout(() => {
-                this.exportBtn.classList.remove('pulse');
-            }, 600);
-        }
-        this.exportTasks();
+    // Auto-save functionality
+    setupAutoSave() {
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && this.state.hasUnsavedChanges) {
+                this.saveTasks();
+            }
+        });
+
+        // Handle beforeunload
+        window.addEventListener('beforeunload', (e) => {
+            if (this.state.hasUnsavedChanges) {
+                this.saveTasks();
+            }
+        });
     }
 
-    handleImportClick() {
-        if (this.importBtn) {
-            this.importBtn.classList.add('pulse');
-            setTimeout(() => {
-                this.importBtn.classList.remove('pulse');
-            }, 600);
+    autoSave() {
+        if (this.state.hasUnsavedChanges) {
+            this.saveTasks();
+            this.state.hasUnsavedChanges = false;
         }
-        this.importInput?.click();
+    }
+
+    markAsChanged() {
+        this.state.hasUnsavedChanges = true;
+        this.boundHandlers.autoSave();
     }
 
     generateId() {
@@ -159,7 +256,6 @@ class TodoApp {
             const tasks = localStorage.getItem('todoTasks');
             const parsedTasks = tasks ? JSON.parse(tasks) : [];
 
-            // Ensure all tasks have required properties
             return parsedTasks.map(task => ({
                 id: task.id || this.generateId(),
                 text: task.text || '',
@@ -172,22 +268,30 @@ class TodoApp {
                 order: task.order !== undefined ? task.order : Date.now()
             }));
         } catch (error) {
-            console.error('Error loading tasks:', error);
+            this.handleError(error, 'STORAGE');
             return [];
         }
     }
 
     saveTasks() {
         try {
-            localStorage.setItem('todoTasks', JSON.stringify(this.tasks));
+            const data = {
+                tasks: this.state.tasks,
+                metadata: {
+                    version: '2.0',
+                    timestamp: new Date().toISOString(),
+                    totalTasks: this.state.tasks.length
+                }
+            };
+
+            localStorage.setItem('todoTasks', JSON.stringify(data.tasks));
+            this.state.hasUnsavedChanges = false;
         } catch (error) {
-            console.error('Error saving tasks:', error);
-            this.showNotification('Error saving tasks. Please check your browser settings.', 'error');
+            this.handleError(error, 'STORAGE');
         }
     }
 
     showNotification(message, type = 'success') {
-        // Create notification element if it doesn't exist
         let notification = document.getElementById('notification');
         if (!notification) {
             notification = document.createElement('div');
@@ -201,15 +305,17 @@ class TodoApp {
 
         setTimeout(() => {
             notification.classList.remove('show');
-        }, 3000);
+        }, this.config.notificationDuration);
     }
 
     handleAddTask(e) {
         e.preventDefault();
 
         const text = this.taskInput?.value?.trim();
-        if (!text) {
-            this.showNotification('Please enter a task title', 'error');
+        const validation = this.validateTaskInput(text);
+
+        if (!validation.isValid) {
+            this.showNotification(validation.errors[0], 'error');
             return;
         }
 
@@ -225,17 +331,12 @@ class TodoApp {
             order: Date.now()
         };
 
-        this.tasks.unshift(task);
-        this.saveTasks();
+        this.state.tasks.unshift(task);
+        this.markAsChanged();
         this.render();
 
         // Reset form
-        if (this.taskInput) this.taskInput.value = '';
-        if (this.taskDescription) this.taskDescription.value = '';
-        if (this.dueDateInput) this.dueDateInput.value = '';
-        if (this.prioritySelect) this.prioritySelect.value = 'medium';
-
-        // Focus back to input
+        this.resetForm();
         this.taskInput?.focus();
 
         this.showNotification('Task added successfully!');
@@ -249,29 +350,36 @@ class TodoApp {
         }, 10);
     }
 
+    resetForm() {
+        if (this.taskInput) this.taskInput.value = '';
+        if (this.taskDescription) this.taskDescription.value = '';
+        if (this.dueDateInput) this.dueDateInput.value = '';
+        if (this.prioritySelect) this.prioritySelect.value = 'medium';
+    }
+
     handleSearch(e) {
-        this.searchQuery = e.target.value.toLowerCase();
+        this.state.searchQuery = e.target.value.toLowerCase();
         this.render();
     }
 
     handleFilter(e) {
         this.filterButtons?.forEach(btn => btn.classList.remove('active'));
         e.target.classList.add('active');
-        this.currentFilter = e.target.dataset.filter;
+        this.state.currentFilter = e.target.dataset.filter;
         this.render();
     }
 
     handleSort(e) {
-        this.currentSort = e.target.value;
+        this.state.currentSort = e.target.value;
         this.render();
     }
 
     toggleTask(taskId) {
-        const task = this.tasks.find(t => t.id === taskId);
+        const task = this.state.tasks.find(t => t.id === taskId);
         if (task) {
             task.completed = !task.completed;
             task.completedAt = task.completed ? new Date().toISOString() : null;
-            this.saveTasks();
+            this.markAsChanged();
             this.render();
 
             const status = task.completed ? 'completed' : 'marked as active';
@@ -280,19 +388,19 @@ class TodoApp {
     }
 
     deleteTask(taskId) {
-        const task = this.tasks.find(t => t.id === taskId);
+        const task = this.state.tasks.find(t => t.id === taskId);
         if (task && confirm('Are you sure you want to delete this task?')) {
-            this.tasks = this.tasks.filter(t => t.id !== taskId);
-            this.saveTasks();
+            this.state.tasks = this.state.tasks.filter(t => t.id !== taskId);
+            this.markAsChanged();
             this.render();
             this.showNotification('Task deleted successfully!');
         }
     }
 
     editTask(taskId) {
-        const task = this.tasks.find(t => t.id === taskId);
+        const task = this.state.tasks.find(t => t.id === taskId);
         if (task) {
-            this.editingTaskId = taskId;
+            this.state.editingTaskId = taskId;
             if (this.editTaskInput) this.editTaskInput.value = task.text;
             if (this.editTaskDescription) this.editTaskDescription.value = task.description || '';
             if (this.editPrioritySelect) this.editPrioritySelect.value = task.priority;
@@ -307,18 +415,20 @@ class TodoApp {
 
     saveTaskEdit() {
         const text = this.editTaskInput?.value?.trim();
-        if (!text) {
-            this.showNotification('Please enter a task title', 'error');
+        const validation = this.validateTaskInput(text);
+
+        if (!validation.isValid) {
+            this.showNotification(validation.errors[0], 'error');
             return;
         }
 
-        const task = this.tasks.find(t => t.id === this.editingTaskId);
+        const task = this.state.tasks.find(t => t.id === this.state.editingTaskId);
         if (task) {
             task.text = text;
             task.description = this.editTaskDescription?.value?.trim() || '';
             task.priority = this.editPrioritySelect?.value || 'medium';
             task.dueDate = this.editDueDateInput?.value || null;
-            this.saveTasks();
+            this.markAsChanged();
             this.render();
             this.closeEditModal();
             this.showNotification('Task updated successfully!');
@@ -329,55 +439,55 @@ class TodoApp {
         if (this.editModal) {
             this.editModal.style.display = 'none';
         }
-        this.editingTaskId = null;
+        this.state.editingTaskId = null;
     }
 
     clearCompleted() {
-        const completedCount = this.tasks.filter(t => t.completed).length;
+        const completedCount = this.state.tasks.filter(t => t.completed).length;
         if (completedCount === 0) {
             this.showNotification('No completed tasks to clear.', 'info');
             return;
         }
 
         if (confirm(`Are you sure you want to delete ${completedCount} completed task${completedCount > 1 ? 's' : ''}?`)) {
-            this.tasks = this.tasks.filter(t => !t.completed);
-            this.saveTasks();
+            this.state.tasks = this.state.tasks.filter(t => !t.completed);
+            this.markAsChanged();
             this.render();
             this.showNotification(`${completedCount} completed task${completedCount > 1 ? 's' : ''} cleared!`);
         }
     }
 
     markAllComplete() {
-        const incompleteCount = this.tasks.filter(t => !t.completed).length;
+        const incompleteCount = this.state.tasks.filter(t => !t.completed).length;
         if (incompleteCount === 0) {
             this.showNotification('All tasks are already completed.', 'info');
             return;
         }
 
-        this.tasks.forEach(task => {
+        this.state.tasks.forEach(task => {
             if (!task.completed) {
                 task.completed = true;
                 task.completedAt = new Date().toISOString();
             }
         });
-        this.saveTasks();
+        this.markAsChanged();
         this.render();
         this.showNotification(`${incompleteCount} task${incompleteCount > 1 ? 's' : ''} marked as complete!`);
     }
 
     getFilteredTasks() {
-        let filtered = this.tasks;
+        let filtered = this.state.tasks;
 
-        // Apply search filter
-        if (this.searchQuery) {
+        // Apply search filter with better matching
+        if (this.state.searchQuery) {
             filtered = filtered.filter(task =>
-                task.text.toLowerCase().includes(this.searchQuery) ||
-                (task.description && task.description.toLowerCase().includes(this.searchQuery))
+                task.text.toLowerCase().includes(this.state.searchQuery) ||
+                (task.description && task.description.toLowerCase().includes(this.state.searchQuery))
             );
         }
 
         // Apply status filter
-        switch (this.currentFilter) {
+        switch (this.state.currentFilter) {
             case 'active':
                 filtered = filtered.filter(task => !task.completed);
                 break;
@@ -387,55 +497,34 @@ class TodoApp {
         }
 
         // Apply sorting
-        switch (this.currentSort) {
-            case 'priority':
-                const priorityOrder = { high: 3, medium: 2, low: 1 };
-                filtered.sort((a, b) => {
-                    if (a.completed !== b.completed) {
-                        return a.completed ? 1 : -1;
-                    }
+        return this.sortTasks(filtered);
+    }
+
+    sortTasks(tasks) {
+        return tasks.sort((a, b) => {
+            // Always show incomplete tasks first
+            if (a.completed !== b.completed) {
+                return a.completed ? 1 : -1;
+            }
+
+            switch (this.state.currentSort) {
+                case 'priority':
+                    const priorityOrder = { high: 3, medium: 2, low: 1 };
                     return priorityOrder[b.priority] - priorityOrder[a.priority];
-                });
-                break;
-            case 'due-date':
-                filtered.sort((a, b) => {
-                    if (a.completed !== b.completed) {
-                        return a.completed ? 1 : -1;
-                    }
+                case 'due-date':
                     if (!a.dueDate && !b.dueDate) return 0;
                     if (!a.dueDate) return 1;
                     if (!b.dueDate) return -1;
                     return new Date(a.dueDate) - new Date(b.dueDate);
-                });
-                break;
-            case 'alphabetical':
-                filtered.sort((a, b) => {
-                    if (a.completed !== b.completed) {
-                        return a.completed ? 1 : -1;
-                    }
+                case 'alphabetical':
                     return a.text.toLowerCase().localeCompare(b.text.toLowerCase());
-                });
-                break;
-            case 'custom':
-                filtered.sort((a, b) => {
-                    if (a.completed !== b.completed) {
-                        return a.completed ? 1 : -1;
-                    }
+                case 'custom':
                     return a.order - b.order;
-                });
-                break;
-            case 'date-added':
-            default:
-                filtered.sort((a, b) => {
-                    if (a.completed !== b.completed) {
-                        return a.completed ? 1 : -1;
-                    }
+                case 'date-added':
+                default:
                     return new Date(b.createdAt) - new Date(a.createdAt);
-                });
-                break;
-        }
-
-        return filtered;
+            }
+        });
     }
 
     formatDate(dateString) {
@@ -463,38 +552,52 @@ class TodoApp {
         return dueDate < today;
     }
 
-    handleDragStart(e, taskId) {
-        this.draggedTaskId = taskId;
-        e.dataTransfer.effectAllowed = 'move';
-        e.target.style.opacity = '0.5';
-    }
+    // Enhanced drag and drop with better UX
+    initializeDragAndDrop() {
+        if (!this.taskList) return;
 
-    handleDragEnd(e) {
-        e.target.style.opacity = '1';
-        this.draggedTaskId = null;
-    }
-
-    handleDragOver(e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-    }
-
-    handleDrop(e, targetTaskId) {
-        e.preventDefault();
-
-        if (this.draggedTaskId && this.draggedTaskId !== targetTaskId) {
-            const draggedTask = this.tasks.find(t => t.id === this.draggedTaskId);
-            const targetTask = this.tasks.find(t => t.id === targetTaskId);
-
-            if (draggedTask && targetTask) {
-                const tempOrder = draggedTask.order;
-                draggedTask.order = targetTask.order;
-                targetTask.order = tempOrder;
-
-                this.saveTasks();
-                this.render();
-                this.showNotification('Task order updated!');
+        this.taskList.addEventListener('dragstart', (e) => {
+            if (e.target.classList.contains('task-item')) {
+                this.state.draggedTaskId = e.target.dataset.taskId;
+                e.target.style.opacity = '0.5';
+                e.dataTransfer.effectAllowed = 'move';
             }
+        });
+
+        this.taskList.addEventListener('dragend', (e) => {
+            if (e.target.classList.contains('task-item')) {
+                e.target.style.opacity = '1';
+                this.state.draggedTaskId = null;
+            }
+        });
+
+        this.taskList.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+
+        this.taskList.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const targetTaskId = e.target.closest('.task-item')?.dataset.taskId;
+
+            if (this.state.draggedTaskId && targetTaskId && this.state.draggedTaskId !== targetTaskId) {
+                this.reorderTasks(this.state.draggedTaskId, targetTaskId);
+            }
+        });
+    }
+
+    reorderTasks(draggedId, targetId) {
+        const draggedTask = this.state.tasks.find(t => t.id === draggedId);
+        const targetTask = this.state.tasks.find(t => t.id === targetId);
+
+        if (draggedTask && targetTask) {
+            const tempOrder = draggedTask.order;
+            draggedTask.order = targetTask.order;
+            targetTask.order = tempOrder;
+
+            this.markAsChanged();
+            this.render();
+            this.showNotification('Task order updated!');
         }
     }
 
@@ -530,12 +633,6 @@ class TodoApp {
             </div>
         `;
 
-        // Add drag event listeners
-        li.addEventListener('dragstart', (e) => this.handleDragStart(e, task.id));
-        li.addEventListener('dragend', (e) => this.handleDragEnd(e));
-        li.addEventListener('dragover', (e) => this.handleDragOver(e));
-        li.addEventListener('drop', (e) => this.handleDrop(e, task.id));
-
         return li;
     }
 
@@ -546,8 +643,8 @@ class TodoApp {
     }
 
     updateStats() {
-        const total = this.tasks.length;
-        const completed = this.tasks.filter(t => t.completed).length;
+        const total = this.state.tasks.length;
+        const completed = this.state.tasks.filter(t => t.completed).length;
         const active = total - completed;
 
         if (this.totalTasksSpan) this.totalTasksSpan.textContent = total;
@@ -555,13 +652,17 @@ class TodoApp {
         if (this.completedTasksSpan) this.completedTasksSpan.textContent = completed;
     }
 
+    // Optimized rendering with DocumentFragment
     render() {
         const filteredTasks = this.getFilteredTasks();
 
+        if (!this.taskList) return;
+
+        // Use DocumentFragment for better performance
+        const fragment = document.createDocumentFragment();
+
         // Clear task list
-        if (this.taskList) {
-            this.taskList.innerHTML = '';
-        }
+        this.taskList.innerHTML = '';
 
         // Show/hide empty state
         if (filteredTasks.length === 0) {
@@ -571,69 +672,92 @@ class TodoApp {
             if (this.emptyState) this.emptyState.style.display = 'none';
             if (this.taskList) this.taskList.style.display = 'block';
 
-            // Add tasks to list
+            // Add tasks to fragment
             filteredTasks.forEach(task => {
                 const taskElement = this.createTaskElement(task);
-                this.taskList?.appendChild(taskElement);
+                fragment.appendChild(taskElement);
             });
+
+            // Add fragment to DOM in one operation
+            this.taskList.appendChild(fragment);
         }
 
-        // Update stats
         this.updateStats();
+        this.updateBulkActionButtons();
+    }
 
-        // Update bulk action button states
-        const completedCount = this.tasks.filter(t => t.completed).length;
-        const activeCount = this.tasks.filter(t => !t.completed).length;
+    updateBulkActionButtons() {
+        const completedCount = this.state.tasks.filter(t => t.completed).length;
+        const activeCount = this.state.tasks.filter(t => !t.completed).length;
 
         if (this.clearCompletedBtn) this.clearCompletedBtn.disabled = completedCount === 0;
         if (this.markAllCompleteBtn) this.markAllCompleteBtn.disabled = activeCount === 0;
     }
 
-    handleKeyboardShortcuts(e) {
-        // Ctrl/Cmd + Enter to add task
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-            e.preventDefault();
-            if (document.activeElement === this.taskInput) {
-                this.addTaskForm?.dispatchEvent(new Event('submit'));
+    // Enhanced keyboard shortcuts
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Skip if user is typing in an input
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                // Still allow some shortcuts in inputs
+                if (e.key === 'Escape' && this.editModal?.style.display === 'block') {
+                    this.closeEditModal();
+                }
+                return;
             }
-        }
 
-        // Escape to close modal
-        if (e.key === 'Escape' && this.editModal?.style.display === 'block') {
-            this.closeEditModal();
-        }
-
-        // Enter to save edit in modal
-        if (e.key === 'Enter' && this.editModal?.style.display === 'block') {
-            if (document.activeElement !== this.editTaskInput) {
-                this.saveTaskEdit();
+            switch (true) {
+                case (e.ctrlKey || e.metaKey) && e.key === 'Enter':
+                    e.preventDefault();
+                    this.taskInput?.focus();
+                    break;
+                case (e.ctrlKey || e.metaKey) && e.key === 'f':
+                    e.preventDefault();
+                    this.searchInput?.focus();
+                    break;
+                case (e.ctrlKey || e.metaKey) && e.key === 'd':
+                    e.preventDefault();
+                    this.toggleTheme();
+                    break;
+                case e.key === 'Escape':
+                    if (this.editModal?.style.display === 'block') {
+                        this.closeEditModal();
+                    }
+                    break;
             }
-        }
-
-        // Focus search with Ctrl/Cmd + F
-        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-            e.preventDefault();
-            this.searchInput?.focus();
-        }
-
-        // Toggle theme with Ctrl/Cmd + D
-        if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
-            e.preventDefault();
-            this.toggleTheme();
-        }
+        });
     }
 
-    // Export tasks to JSON
+    handleExportClick() {
+        if (this.exportBtn) {
+            this.exportBtn.classList.add('pulse');
+            setTimeout(() => {
+                this.exportBtn.classList.remove('pulse');
+            }, 600);
+        }
+        this.exportTasks();
+    }
+
+    handleImportClick() {
+        if (this.importBtn) {
+            this.importBtn.classList.add('pulse');
+            setTimeout(() => {
+                this.importBtn.classList.remove('pulse');
+            }, 600);
+        }
+        this.importInput?.click();
+    }
+
     exportTasks() {
-        if (this.tasks.length === 0) {
+        if (this.state.tasks.length === 0) {
             this.showNotification('No tasks to export!', 'info');
             return;
         }
 
         const exportData = {
-            tasks: this.tasks,
+            tasks: this.state.tasks,
             exportDate: new Date().toISOString(),
-            version: '1.0'
+            version: '2.0'
         };
 
         const dataStr = JSON.stringify(exportData, null, 2);
@@ -647,7 +771,6 @@ class TodoApp {
         this.showNotification('Tasks exported successfully!');
     }
 
-    // Import tasks from JSON
     importTasks(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -660,10 +783,8 @@ class TodoApp {
 
                 // Handle different import formats
                 if (Array.isArray(importedData)) {
-                    // Direct array of tasks
                     importedTasks = importedData;
                 } else if (importedData.tasks && Array.isArray(importedData.tasks)) {
-                    // Object with tasks property
                     importedTasks = importedData.tasks;
                 } else {
                     this.showNotification('Invalid file format', 'error');
@@ -675,38 +796,35 @@ class TodoApp {
                     return;
                 }
 
-                const action = this.tasks.length > 0
+                const action = this.state.tasks.length > 0
                     ? confirm(`Import ${importedTasks.length} tasks? Choose:\nOK = Replace all current tasks\nCancel = Merge with current tasks`)
                     : true;
 
-                if (action === null) return; // User cancelled
+                if (action === null) return;
 
                 if (action) {
-                    // Replace all tasks
-                    this.tasks = importedTasks.map(task => ({
+                    this.state.tasks = importedTasks.map(task => ({
                         ...task,
                         id: task.id || this.generateId(),
                         order: task.order !== undefined ? task.order : Date.now()
                     }));
                 } else {
-                    // Merge tasks
                     const newTasks = importedTasks.map(task => ({
                         ...task,
-                        id: this.generateId(), // Always generate new ID for merged tasks
+                        id: this.generateId(),
                         order: task.order !== undefined ? task.order : Date.now()
                     }));
-                    this.tasks = [...this.tasks, ...newTasks];
+                    this.state.tasks = [...this.state.tasks, ...newTasks];
                 }
 
-                this.saveTasks();
+                this.markAsChanged();
                 this.render();
                 this.showNotification(`${importedTasks.length} tasks imported successfully!`);
 
-                // Clear the file input
                 event.target.value = '';
 
             } catch (error) {
-                console.error('Import error:', error);
+                this.handleError(error, 'TASK_OPERATION');
                 this.showNotification('Error importing tasks. Please check the file format.', 'error');
             }
         };

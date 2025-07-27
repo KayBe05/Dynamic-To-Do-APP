@@ -4,9 +4,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Professional Todo Task Management Application">
   <title>Enhanced Smart To-Do List</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="style.css">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
 </head>
 
 <body class="theme-default">
@@ -19,188 +21,276 @@
   </div>
 
   <div class="container">
-    <header class="header">
+    <header class="app-header" role="banner">
       <div class="header-content">
-        <h1><i class="fas fa-tasks"></i>Enhanced Smart To-Do List</h1>
-        <p class="subtitle">Organize your life, one task at a time</p>
-        <div class="header-controls">
-          <button id="theme-toggle" class="control-btn" title="Toggle Theme">
-            <i class="fas fa-moon"></i>
-          </button>
-          <button id="export-btn" class="control-btn" title="Export Tasks">
-            <i class="fas fa-download"></i>
-          </button>
-          <input type="file" id="import-input" accept=".json" style="display: none;">
-          <button id="import-btn" class="control-btn" title="Import Tasks">
-            <i class="fas fa-upload"></i>
-          </button>
-        </div>
+        <h1 class="app-title">
+          <i class="fas fa-tasks" aria-hidden="true"></i>
+          <span>TaskMaster Pro</span>
+        </h1>
+        <p class="app-subtitle">Your Professional Task Management Solution</p>
       </div>
+      <nav class="header-nav" aria-label="Application controls">
+        <ul class="control-list">
+          <li>
+            <button id="theme-toggle" class="control-btn" aria-label="Toggle theme" title="Toggle Theme">
+              <i class="fas fa-moon" aria-hidden="true"></i>
+            </button>
+          </li>
+          <li>
+            <button id="export-btn" class="control-btn" aria-label="Export tasks" title="Export Tasks">
+              <i class="fas fa-download" aria-hidden="true"></i>
+            </button>
+          </li>
+          <li>
+            <input type="file" id="import-input" accept=".json" style="display: none;">
+            <button id="import-btn" class="control-btn" aria-label="Import tasks" title="Import Tasks">
+              <i class="fas fa-upload" aria-hidden="true"></i>
+            </button>
+          </li>
+        </ul>
+      </nav>
     </header>
 
-    <div class="add-task-section">
-      <form id="add-task-form" class="add-task-form">
-        <div class="input-group">
-          <div class="main-input-wrapper">
-            <input type="text" id="task-input" placeholder="What needs to be done?" required>
-            <button type="button" id="voice-input-btn" class="voice-btn" title="Voice Input">
-              <i class="fas fa-microphone"></i>
+    <main role="main" aria-label="Todo Application">
+      <section class="task-creation-section" aria-label="Task creation form">
+        <h2 class="section-title">Add New Task</h2>
+        <form id="add-task-form" class="add-task-form">
+          <fieldset class="task-form-fieldset">
+            <legend class="sr-only">Task Information</legend>
+            <div class="form-row">
+              <div class="form-group main-input-wrapper">
+                <label for="task-input">Task Title *</label>
+                <input type="text" id="task-input" required minlength="1" maxlength="200" autocomplete="off"
+                  placeholder="What needs to be done?" aria-describedby="task-help">
+                <div id="task-help" class="help-text">Enter your task title here</div>
+                <button type="button" id="voice-input-btn" class="voice-btn" aria-label="Voice Input"
+                  title="Voice Input">
+                  <i class="fas fa-microphone" aria-hidden="true"></i>
+                </button>
+              </div>
+
+              <div class="form-group">
+                <label for="task-description">Description</label>
+                <textarea id="task-description" rows="2" maxlength="500"
+                  placeholder="Add details (optional)"></textarea>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="category-select">Category</label>
+                <select id="category-select" class="category-select">
+                  <option value="personal">Personal</option>
+                  <option value="work">Work</option>
+                  <option value="shopping">Shopping</option>
+                  <option value="health">Health</option>
+                  <option value="learning">Learning</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="priority-select">Priority</label>
+                <select id="priority-select" class="priority-select">
+                  <option value="low">Low Priority</option>
+                  <option value="medium" selected>Medium Priority</option>
+                  <option value="high">High Priority</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="due-date">Due Date</label>
+                <input type="date" id="due-date" class="due-date">
+              </div>
+
+              <div class="form-group">
+                <label for="due-time">Due Time</label>
+                <input type="time" id="due-time" class="due-time">
+              </div>
+
+              <div class="form-group">
+                <button type="submit" class="add-btn">
+                  <i class="fas fa-plus" aria-hidden="true"></i> Add Task
+                </button>
+              </div>
+            </div>
+          </fieldset>
+        </form>
+      </section>
+
+      <section class="controls-section" aria-label="Task controls and filters">
+        <h2 class="section-title">Task Management</h2>
+
+        <div class="search-bar">
+          <label for="search-input" class="sr-only">Search tasks</label>
+          <i class="fas fa-search" aria-hidden="true"></i>
+          <input type="text" id="search-input" placeholder="Search tasks..." aria-label="Search tasks">
+        </div>
+
+        <div class="filter-section">
+          <fieldset class="filter-fieldset">
+            <legend>Filter Tasks</legend>
+            <div class="filter-buttons" role="group" aria-label="Task status filters">
+              <button class="filter-btn active" data-filter="all">All</button>
+              <button class="filter-btn" data-filter="active">Active</button>
+              <button class="filter-btn" data-filter="completed">Completed</button>
+              <button class="filter-btn" data-filter="overdue">Overdue</button>
+            </div>
+
+            <div class="category-filter">
+              <label for="category-filter">Filter by Category</label>
+              <select id="category-filter">
+                <option value="all">All Categories</option>
+                <option value="personal">Personal</option>
+                <option value="work">Work</option>
+                <option value="shopping">Shopping</option>
+                <option value="health">Health</option>
+                <option value="learning">Learning</option>
+              </select>
+            </div>
+          </fieldset>
+        </div>
+
+        <div class="sort-options">
+          <label for="sort-select">Sort by</label>
+          <select id="sort-select">
+            <option value="date-added">Date Added</option>
+            <option value="priority">Priority</option>
+            <option value="due-date">Due Date</option>
+            <option value="alphabetical">Alphabetical</option>
+            <option value="category">Category</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="statistics-section" aria-label="Task statistics">
+        <h2 class="section-title">Statistics</h2>
+        <div class="stats">
+          <div class="stat-item">
+            <span class="stat-number" id="total-tasks">0</span>
+            <span class="stat-label">Total</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number" id="active-tasks">0</span>
+            <span class="stat-label">Active</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number" id="completed-tasks">0</span>
+            <span class="stat-label">Completed</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number" id="overdue-tasks">0</span>
+            <span class="stat-label">Overdue</span>
+          </div>
+        </div>
+
+        <div class="productivity-insights">
+          <h3><i class="fas fa-chart-line" aria-hidden="true"></i> Productivity Insights</h3>
+          <div class="insights-grid">
+            <div class="insight-card">
+              <span class="insight-value" id="completion-rate">0%</span>
+              <span class="insight-label">Completion Rate</span>
+            </div>
+            <div class="insight-card">
+              <span class="insight-value" id="avg-completion-time">-</span>
+              <span class="insight-label">Avg. Completion</span>
+            </div>
+            <div class="insight-card">
+              <span class="insight-value" id="streak-days">0</span>
+              <span class="insight-label">Day Streak</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="task-list-section" aria-label="Task list">
+        <div class="task-list-header">
+          <h2>Tasks</h2>
+          <div class="view-toggles" role="group" aria-label="View options">
+            <button class="view-btn active" data-view="list" aria-label="List view">
+              <i class="fas fa-list" aria-hidden="true"></i>
+            </button>
+            <button class="view-btn" data-view="grid" aria-label="Grid view">
+              <i class="fas fa-th-large" aria-hidden="true"></i>
             </button>
           </div>
-          <select id="category-select" class="category-select">
-            <option value="personal">Personal</option>
-            <option value="work">Work</option>
-            <option value="shopping">Shopping</option>
-            <option value="health">Health</option>
-            <option value="learning">Learning</option>
-          </select>
-          <select id="priority-select" class="priority-select">
-            <option value="low">Low Priority</option>
-            <option value="medium" selected>Medium Priority</option>
-            <option value="high">High Priority</option>
-          </select>
-          <input type="date" id="due-date" class="due-date">
-          <input type="time" id="due-time" class="due-time">
-          <button type="submit" class="add-btn">
-            <i class="fas fa-plus"></i> Add Task
+        </div>
+
+        <ul id="task-list" class="task-list list-view" role="list" aria-label="Task items">
+        </ul>
+
+        <div id="empty-state" class="empty-state">
+          <i class="fas fa-clipboard-check" aria-hidden="true"></i>
+          <h3>No tasks found</h3>
+          <p>Add a task above to get started or adjust your filters!</p>
+        </div>
+      </section>
+
+      <section class="bulk-actions-section" aria-label="Bulk task actions">
+        <h2 class="section-title">Bulk Actions</h2>
+        <div class="bulk-actions">
+          <button id="clear-completed" class="bulk-btn">
+            <i class="fas fa-trash" aria-hidden="true"></i> Clear Completed
+          </button>
+          <button id="mark-all-complete" class="bulk-btn">
+            <i class="fas fa-check-double" aria-hidden="true"></i> Complete All
+          </button>
+          <button id="duplicate-selected" class="bulk-btn">
+            <i class="fas fa-copy" aria-hidden="true"></i> Duplicate Selected
           </button>
         </div>
-      </form>
-    </div>
-
-    <div class="controls">
-      <div class="search-bar">
-        <i class="fas fa-search"></i>
-        <input type="text" id="search-input" placeholder="Search tasks...">
-      </div>
-
-      <div class="filter-section">
-        <div class="filter-buttons">
-          <button class="filter-btn active" data-filter="all">All</button>
-          <button class="filter-btn" data-filter="active">Active</button>
-          <button class="filter-btn" data-filter="completed">Completed</button>
-          <button class="filter-btn" data-filter="overdue">Overdue</button>
-        </div>
-
-        <div class="category-filter">
-          <select id="category-filter">
-            <option value="all">All Categories</option>
-            <option value="personal">Personal</option>
-            <option value="work">Work</option>
-            <option value="shopping">Shopping</option>
-            <option value="health">Health</option>
-            <option value="learning">Learning</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="sort-options">
-        <select id="sort-select">
-          <option value="date-added">Date Added</option>
-          <option value="priority">Priority</option>
-          <option value="due-date">Due Date</option>
-          <option value="alphabetical">Alphabetical</option>
-          <option value="category">Category</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="stats">
-      <div class="stat-item">
-        <span class="stat-number" id="total-tasks">0</span>
-        <span class="stat-label">Total</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-number" id="active-tasks">0</span>
-        <span class="stat-label">Active</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-number" id="completed-tasks">0</span>
-        <span class="stat-label">Completed</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-number" id="overdue-tasks">0</span>
-        <span class="stat-label">Overdue</span>
-      </div>
-    </div>
-
-    <div class="productivity-insights">
-      <h3><i class="fas fa-chart-line"></i> Productivity Insights</h3>
-      <div class="insights-grid">
-        <div class="insight-card">
-          <span class="insight-value" id="completion-rate">0%</span>
-          <span class="insight-label">Completion Rate</span>
-        </div>
-        <div class="insight-card">
-          <span class="insight-value" id="avg-completion-time">-</span>
-          <span class="insight-label">Avg. Completion</span>
-        </div>
-        <div class="insight-card">
-          <span class="insight-value" id="streak-days">0</span>
-          <span class="insight-label">Day Streak</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="task-list-container">
-      <div class="task-list-header">
-        <h3>Tasks</h3>
-        <div class="view-toggles">
-          <button class="view-btn active" data-view="list">
-            <i class="fas fa-list"></i>
-          </button>
-          <button class="view-btn" data-view="grid">
-            <i class="fas fa-th-large"></i>
-          </button>
-        </div>
-      </div>
-      <ul id="task-list" class="task-list list-view"></ul>
-      <div id="empty-state" class="empty-state">
-        <i class="fas fa-clipboard-check"></i>
-        <h3>No tasks found</h3>
-        <p>Add a task above to get started or adjust your filters!</p>
-      </div>
-    </div>
-
-    <div class="bulk-actions">
-      <button id="clear-completed" class="bulk-btn">
-        <i class="fas fa-trash"></i> Clear Completed
-      </button>
-      <button id="mark-all-complete" class="bulk-btn">
-        <i class="fas fa-check-double"></i> Complete All
-      </button>
-      <button id="duplicate-selected" class="bulk-btn">
-        <i class="fas fa-copy"></i> Duplicate Selected
-      </button>
-    </div>
+      </section>
+    </main>
   </div>
 
   <!-- Edit Modal -->
-  <div id="edit-modal" class="modal">
+  <div id="edit-modal" class="modal" role="dialog" aria-labelledby="edit-modal-title" aria-hidden="true">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Edit Task</h3>
-        <button class="close-btn" id="close-modal">
-          <i class="fas fa-times"></i>
+        <h3 id="edit-modal-title">Edit Task</h3>
+        <button class="close-btn" id="close-modal" aria-label="Close modal">
+          <i class="fas fa-times" aria-hidden="true"></i>
         </button>
       </div>
       <div class="modal-body">
-        <input type="text" id="edit-task-input" placeholder="Task description">
-        <select id="edit-category-select" class="category-select">
-          <option value="personal">Personal</option>
-          <option value="work">Work</option>
-          <option value="shopping">Shopping</option>
-          <option value="health">Health</option>
-          <option value="learning">Learning</option>
-        </select>
-        <select id="edit-priority-select" class="priority-select">
-          <option value="low">Low Priority</option>
-          <option value="medium">Medium Priority</option>
-          <option value="high">High Priority</option>
-        </select>
-        <input type="date" id="edit-due-date" class="due-date">
-        <input type="time" id="edit-due-time" class="due-time">
-        <textarea id="edit-notes" placeholder="Additional notes..." rows="3"></textarea>
+        <div class="form-group">
+          <label for="edit-task-input">Task Title</label>
+          <input type="text" id="edit-task-input" placeholder="Task description">
+        </div>
+
+        <div class="form-group">
+          <label for="edit-category-select">Category</label>
+          <select id="edit-category-select" class="category-select">
+            <option value="personal">Personal</option>
+            <option value="work">Work</option>
+            <option value="shopping">Shopping</option>
+            <option value="health">Health</option>
+            <option value="learning">Learning</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="edit-priority-select">Priority</label>
+          <select id="edit-priority-select" class="priority-select">
+            <option value="low">Low Priority</option>
+            <option value="medium">Medium Priority</option>
+            <option value="high">High Priority</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="edit-due-date">Due Date</label>
+          <input type="date" id="edit-due-date" class="due-date">
+        </div>
+
+        <div class="form-group">
+          <label for="edit-due-time">Due Time</label>
+          <input type="time" id="edit-due-time" class="due-time">
+        </div>
+
+        <div class="form-group">
+          <label for="edit-notes">Additional Notes</label>
+          <textarea id="edit-notes" placeholder="Additional notes..." rows="3"></textarea>
+        </div>
       </div>
       <div class="modal-footer">
         <button id="cancel-edit" class="cancel-btn">Cancel</button>
@@ -210,12 +300,12 @@
   </div>
 
   <!-- Task Details Modal -->
-  <div id="details-modal" class="modal">
+  <div id="details-modal" class="modal" role="dialog" aria-labelledby="details-modal-title" aria-hidden="true">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Task Details</h3>
-        <button class="close-btn" id="close-details-modal">
-          <i class="fas fa-times"></i>
+        <h3 id="details-modal-title">Task Details</h3>
+        <button class="close-btn" id="close-details-modal" aria-label="Close modal">
+          <i class="fas fa-times" aria-hidden="true"></i>
         </button>
       </div>
       <div class="modal-body" id="task-details-content">
@@ -225,10 +315,10 @@
   </div>
 
   <!-- Notification Container -->
-  <div id="notification-container" class="notification-container"></div>
+  <div id="notification-container" class="notification-container" role="alert" aria-live="polite"></div>
 
   <!-- Confetti Container -->
-  <div id="confetti-container" class="confetti-container"></div>
+  <div id="confetti-container" class="confetti-container" aria-hidden="true"></div>
 
   <script src="script.js"></script>
 </body>
