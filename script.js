@@ -34,7 +34,6 @@ class TodoApp {
         try {
             this.initializeElements();
             this.attachEventListeners();
-            this.initializeTheme();
             this.setupAutoSave();
             this.setupKeyboardShortcuts();
             this.render();
@@ -139,8 +138,7 @@ class TodoApp {
         this.cancelEditBtn = document.getElementById('cancel-edit');
         this.saveEditBtn = document.getElementById('save-edit');
 
-        // Theme and utility elements
-        this.themeToggle = document.getElementById('theme-toggle');
+        // Utility elements (theme toggle removed)
         this.exportBtn = document.getElementById('export-btn');
         this.importBtn = document.getElementById('import-btn');
         this.importInput = document.getElementById('import-input');
@@ -174,9 +172,6 @@ class TodoApp {
             }
         });
 
-        // Theme toggle
-        this.themeToggle?.addEventListener('click', () => this.toggleTheme());
-
         // Export/Import functionality
         this.exportBtn?.addEventListener('click', () => this.handleExportClick());
         this.importBtn?.addEventListener('click', () => this.handleImportClick());
@@ -184,38 +179,6 @@ class TodoApp {
 
         // Enhanced drag and drop
         this.initializeDragAndDrop();
-    }
-
-    initializeTheme() {
-        const savedTheme = localStorage.getItem('todoAppTheme');
-        if (savedTheme === 'dark') {
-            document.body.classList.add('theme-dark');
-            this.updateThemeIcon(true);
-        }
-    }
-
-    toggleTheme() {
-        const body = document.body;
-        const isDark = body.classList.toggle('theme-dark');
-
-        localStorage.setItem('todoAppTheme', isDark ? 'dark' : 'light');
-        this.updateThemeIcon(isDark);
-
-        if (this.themeToggle) {
-            this.themeToggle.classList.add('theme-toggle-animation');
-            setTimeout(() => {
-                this.themeToggle.classList.remove('theme-toggle-animation');
-            }, 500);
-        }
-
-        this.showNotification(`${isDark ? 'Dark' : 'Light'} theme activated!`);
-    }
-
-    updateThemeIcon(isDark) {
-        const icon = this.themeToggle?.querySelector('i');
-        if (icon) {
-            icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
-        }
     }
 
     // Auto-save functionality
@@ -714,10 +677,6 @@ class TodoApp {
                 case (e.ctrlKey || e.metaKey) && e.key === 'f':
                     e.preventDefault();
                     this.searchInput?.focus();
-                    break;
-                case (e.ctrlKey || e.metaKey) && e.key === 'd':
-                    e.preventDefault();
-                    this.toggleTheme();
                     break;
                 case e.key === 'Escape':
                     if (this.editModal?.style.display === 'block') {
